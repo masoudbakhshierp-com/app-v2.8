@@ -30,10 +30,14 @@ jobs:
       # `gradle wrapper` روی یک سیستم دارای Gradle، مثلاً از طریق باز کردن
       # پروژه در Android Studio)، می‌توانید gradle-version زیر را حذف کنید
       # و به‌جایش gradle-version: wrapper بگذارید تا از خود پروژه بخواند.
+      # نکته‌ی مهم: نسخه‌ی AGP (پلاگین Android Gradle) این پروژه 9.1.1 است
+      # (طبق gradle/libs.versions.toml) که حداقل Gradle 9.3.1 لازم دارد.
+      # قبلاً اینجا 8.13 بود که باعث خطای "Minimum supported Gradle
+      # version is 9.3.1. Current version is 8.13." می‌شد.
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: '9.3.1'
 
       # نکته‌ی مهم: قبلاً اینجا مستقیم از "if: ${{ secrets.KEYSTORE_BASE64
       # != '' }}" استفاده می‌شد. وقتی این workflow از طریق API (همون کاری
