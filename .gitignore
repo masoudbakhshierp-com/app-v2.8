@@ -1,0 +1,6 @@
+
+# added automatically by zomorod_android_deploy.py
+.env
+*.jks
+local.properties
+KEYSTORE_PASSWORD_SAVE_THIS.txt

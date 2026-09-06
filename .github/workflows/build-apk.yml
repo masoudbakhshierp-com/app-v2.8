@@ -1,0 +1,63 @@
+name: Build Driver APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # این پروژه فعلاً gradle-wrapper.jar را همراه ندارد (فایل باینری است
+      # و در محیط تولید این پروژه قابل بازسازی نبود). به‌جای تکیه بر
+      # ./gradlew، از اکشن رسمی Gradle استفاده می‌کنیم که خودش نسخه‌ی
+      # مشخص‌شده را نصب می‌کند — نیازی به gradlew یا gradle-wrapper.jar
+      # نیست. اگر بعداً wrapper واقعی را اضافه کردید (با اجرای یک‌بار
+      # `gradle wrapper` روی یک سیستم دارای Gradle، مثلاً از طریق باز کردن
+      # پروژه در Android Studio)، می‌توانید gradle-version زیر را حذف کنید
+      # و به‌جایش gradle-version: wrapper بگذارید تا از خود پروژه بخواند.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      # نکته‌ی مهم: قبلاً اینجا مستقیم از "if: ${{ secrets.KEYSTORE_BASE64
+      # != '' }}" استفاده می‌شد. وقتی این workflow از طریق API (همون کاری
+      # که اسکریپت دیپلوی با "Triggering the workflow" انجام می‌ده) اجرا
+      # بشه، GitHub قبل از اجرا یه اعتبارسنجی استاتیک روی فایل انجام می‌ده
+      # که توش context به اسم "secrets" هنوز شناخته‌شده نیست -- دقیقاً
+      # همون خطای "Unrecognized named-value: 'secrets'". برای همین اول
+      # مقدار رو توی یه env سطح job می‌ریزیم و همون env رو چک می‌کنیم.
+      - name: Decode release keystore (اختیاری)
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/my-upload-key.jks"
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: driver-app-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
